@@ -17,6 +17,7 @@ limitations under the License.
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -95,6 +96,20 @@ var RootCmd = &cobra.Command{
 
 			if err := checkKanikoDir(dir); err != nil {
 				return err
+			}
+
+			// Parse the JSON build arguments and insert them at the start of buildArgs
+			// (so that build args supplied directly on the command line override them)
+			var jsonArgs map[string]string;
+			if err := json.Unmarshal([]byte(opts.BuildArgsJson), &jsonArgs); err != nil {
+				return errors.New("invalid json build arguments")
+			}
+			opts.BuildArgs = append(opts.BuildArgs, make([]string, len(jsonArgs))...)
+			copy(opts.BuildArgs[len(jsonArgs):], opts.BuildArgs)
+			i := 0
+			for k, v := range jsonArgs {
+				opts.BuildArgs[i] = fmt.Sprintf("%s=%s", k, v)
+				i += 1
 			}
 
 			resolveEnvironmentBuildArgs(opts.BuildArgs, os.Getenv)
@@ -205,6 +220,7 @@ func addKanikoOptionsFlags() {
 	RootCmd.PersistentFlags().VarP(&opts.Destinations, "destination", "d", "Registry the final image should be pushed to. Set it repeatedly for multiple destinations.")
 	RootCmd.PersistentFlags().StringVarP(&opts.SnapshotMode, "snapshot-mode", "", "full", "Change the file attributes inspected during snapshotting")
 	RootCmd.PersistentFlags().StringVarP(&opts.CustomPlatform, "custom-platform", "", "", "Specify the build platform if different from the current host")
+	RootCmd.PersistentFlags().StringVarP(&opts.BuildArgsJson, "build-args-json", "", "{}", "This flag allows you to pass in ARG values at build time. It should be set to a JSON object of build args.")
 	RootCmd.PersistentFlags().VarP(&opts.BuildArgs, "build-arg", "", "This flag allows you to pass in ARG values at build time. Set it repeatedly for multiple values.")
 	RootCmd.PersistentFlags().BoolVarP(&opts.Insecure, "insecure", "", false, "Push to insecure registry using plain HTTP")
 	RootCmd.PersistentFlags().BoolVarP(&opts.SkipTLSVerify, "skip-tls-verify", "", false, "Push to insecure registry ignoring TLS verify")
