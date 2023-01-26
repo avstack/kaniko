@@ -100,19 +100,24 @@ var RootCmd = &cobra.Command{
 
 			// Parse the JSON build arguments and insert them at the start of buildArgs
 			// (so that build args supplied directly on the command line override them)
-			var jsonArgs map[string]string;
+			var jsonArgs map[string]string
 			if err := json.Unmarshal([]byte(opts.BuildArgsJson), &jsonArgs); err != nil {
 				return errors.New("invalid json build arguments")
 			}
-			opts.BuildArgs = append(opts.BuildArgs, make([]string, len(jsonArgs))...)
-			copy(opts.BuildArgs[len(jsonArgs):], opts.BuildArgs)
-			i := 0
-			for k, v := range jsonArgs {
-				opts.BuildArgs[i] = fmt.Sprintf("%s=%s", k, v)
-				i += 1
+			if len(jsonArgs) > 0 {
+				logrus.Info("Adding build args from JSON")
+				opts.BuildArgs = append(opts.BuildArgs, make([]string, len(jsonArgs))...)
+				copy(opts.BuildArgs[len(jsonArgs):], opts.BuildArgs)
+				i := 0
+				for k, v := range jsonArgs {
+					opts.BuildArgs[i] = fmt.Sprintf("%s=%s", k, v)
+					i += 1
+				}
+				logrus.Info("New build args: %s", opts.BuildArgs)
 			}
 
 			resolveEnvironmentBuildArgs(opts.BuildArgs, os.Getenv)
+			logrus.Info("Build args after resolveEnvironmentBuildArgs: %s", opts.BuildArgs)
 
 			if err := logging.Configure(logLevel, logFormat, logTimestamp); err != nil {
 				return err
